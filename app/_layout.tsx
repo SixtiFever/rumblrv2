@@ -6,6 +6,7 @@ export default function RootLayout() {
       <Stack.Screen name="index" options={{
         title: 'Login'
       }} />
+      <Stack.Screen name="admin" />
         <Stack.Screen name="stack" options={{
             headerShown: false,
         }} />

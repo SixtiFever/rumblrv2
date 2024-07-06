@@ -65,9 +65,10 @@ async function createAuthenticatedUser (password: string, email: string, auth: a
 }
 
 async function createUserDoc(e: string, p: string) {
+    const email = e.toLowerCase();
     const cRef = collection(FIRESTORE, 'users');
-    const dRef = doc(cRef, e);
-    await setDoc(dRef, { [e] : { email: e, password:  p} });
+    const dRef = doc(cRef, email);
+    await setDoc(dRef, { email: email, password:  p, total_winnings: 0 });
     console.log('User added to user document');
 }
 

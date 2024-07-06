@@ -1,5 +1,5 @@
-import { Link, router } from "expo-router";
-import { useState } from "react";
+import { Link, router, useNavigation } from "expo-router";
+import { useLayoutEffect, useState } from "react";
 import { Text, View, Pressable, TextInput, StyleSheet } from "react-native";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { AUTH, FIRESTORE } from "@/firebaseconfig";
@@ -7,8 +7,18 @@ import { collection, doc, getDoc } from "firebase/firestore";
 
 export default function Index() {
 
+    const nav = useNavigation();
+
     const [email, setEmail] = useState(null);
     const [password, setPassword] = useState(null);
+
+    useLayoutEffect(() => {
+
+        nav.setOptions({
+            headerRight: () => <Admin />
+        })
+
+    }, [])
 
     const handleLogin = async () => {
         if ( email != null && password != null ) {
@@ -17,12 +27,7 @@ export default function Index() {
                 // Signed in 
                 const user = userCredential.user;
                 return user;
-                // // if user in current tournament, navigate to lobby
-                // const tournamentCollectionRef = collection(FIRESTORE, 'tournaments');
-                // const 
 
-                // router.navigate("/stack/home");
-                // // ...
               }).catch((error) => {
                 const errorCode = error.code;
                 const errorMessage = error.message;
@@ -32,10 +37,17 @@ export default function Index() {
             
               // if successfully signed in
               if ( userCred.email ) {
-                const playerInTour = await checkPlayerInTournament(userCred);
 
-                // if player in tournament, go to lobby. Otherwise go to home
-                const dummy = playerInTour == 1 ? router.navigate('/stack/lobby') : router.navigate('/stack/home');
+                // if code = [1,0] => navigate to lobby, else navigate to home.
+                const tournamentStatusCode = await checkTournamentState(userCred);
+
+                if ( Array.isArray(tournamentStatusCode) && tournamentStatusCode[0] == 1 && tournamentStatusCode[1] == 0  ) {
+                    // player can go to lobby ( is in tournament && tournment is not active )
+                    router.navigate('/stack/lobby')
+                } else {
+                    // navigate to home -> Player not in tournament or tournament is currently active
+                    router.navigate('/stack/home')
+                }
 
               } else {
                 console.log('Issue signing in')
@@ -71,11 +83,13 @@ export default function Index() {
 }
 
 
-async function checkPlayerInTournament(user: any) {
+async function checkTournamentState(user: any) {
     const cRef = collection(FIRESTORE, 'tournaments');
     const dRef = doc(cRef,'1');
     const snap = await getDoc(dRef);
     const players = snap.data()?.players;
+
+    let code = [];  // holds [ player in tournament, tournament active status ] E.g [1,0] player present and tour active
 
     // if there are players in the tournament
     if ( players ) {
@@ -84,13 +98,33 @@ async function checkPlayerInTournament(user: any) {
         for ( let player of Object.entries(players) ) {
             if ( user.email === player[0] ) {
                 console.log('Player found')
-                return 1;
+                code.push(1);
             }
         }
-        return 0;
     } else {
-        console.log('No players in tournament')
+        return [0,0];
     }
+
+    if ( snap.data().tournament_active == false ) {
+        code.push(0);
+    }
+    console.log(code);
+    return code;
+}
+
+const Admin = () => {
+
+    const toAdmin = () => {
+
+        router.navigate('/admin');
+
+    }
+
+    return (
+        <Pressable onPress={toAdmin}>
+            <Text>Admin</Text>
+        </Pressable>
+    )
 }
 
 const styles = StyleSheet.create({
